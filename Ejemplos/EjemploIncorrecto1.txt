@@ -1,0 +1,9 @@
+programa ErrorPalabra {
+  nombre = "Martín";
+
+  prosesar {
+    imprimir(nombre);
+  } manejarError (e) {
+    imprimir("Error");
+  };
+}

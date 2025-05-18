@@ -1,0 +1,9 @@
+programa SinPuntoYComa {
+  nombre = "Martín"
+
+  procesar {
+    imprimir(nombre);
+  } manejarError (e) {
+    imprimir("Error");
+  };
+}

@@ -1,62 +1,116 @@
-import CalculatorLexer from "./generated/CalculatorLexer.js";
-import CalculatorParser from "./generated/CalculatorParser.js";
-import { CustomCalculatorListener } from "./CustomCalculatorListener.js";
-import { CustomCalculatorVisitor } from "./CustomCalculatorVisitor.js";
-import antlr4, { CharStreams, CommonTokenStream, ParseTreeWalker } from "antlr4";
-import readline from 'readline';
-import fs from 'fs';
+import { CharStreams, CommonTokenStream } from "antlr4";
+import fs from "fs";
+import readline from "readline";
+import LenguajeLexer from "./generated/LenguajeLexer.js";
+import LenguajeParser from "./generated/LenguajeParser.js";
+import CustomErrorListener from "./CustomErrorListener.js";
+import CustomVisitor from "./CustomVisitor.js";
 
 async function main() {
-    let input;
+  let input;
 
-    // Intento leer la entrada desde el archivo input - en forma sincrona.
-    try {
-        input = fs.readFileSync('input.txt', 'utf8');
-    } catch (err) {
-        // Si no es posible leer el archivo, solicitar la entrada del usuario por teclado
-        input = await leerCadena(); // Simula lectura síncrona
-        console.log(input);
-    }
+  try {
+    input = fs.readFileSync("input.txt", "utf8");
+  } catch (err) {
+    input = await leerCadena();
+  }
 
-    // Proceso la entrada con el analizador e imprimo el arbol de analisis en formato texto
-    let inputStream = CharStreams.fromString(input);
-    let lexer = new CalculatorLexer(inputStream);
-    let tokenStream = new CommonTokenStream(lexer);
-    let parser = new CalculatorParser(tokenStream);
-    let tree = parser.prog();
-    
-    // Verifico si se produjeron errores
-    if (parser.syntaxErrorsCount > 0) {
-        console.error("\nSe encontraron errores de sintaxis en la entrada.");
-    } 
-    else {
-        console.log("\nEntrada válida.");
-        const cadena_tree = tree.toStringTree(parser.ruleNames);
-        console.log(`Árbol de derivación: ${cadena_tree}`);
+  detectarErroresOrtograficos(input);
 
-        // Utilizo un listener y un walker para recorrer el arbol e indicar cada vez que reconoce una sentencia (stat)
-        //const listener = new CustomCalculatorListener();
-        // ParseTreeWalker.DEFAULT.walk(listener, tree);
+  const inputStream = CharStreams.fromString(input);
+  const lexer = new LenguajeLexer(inputStream);
+  const tokenStream = new CommonTokenStream(lexer);
+  const parser = new LenguajeParser(tokenStream);
 
-        // Utilizo un visitor para visitar los nodos que me interesan de mi arbol
-        const visitor = new CustomCalculatorVisitor();
-        visitor.visit(tree);   
-    }
+  const errorListener = new CustomErrorListener();
+  parser.removeErrorListeners();
+  parser.addErrorListener(errorListener);
+
+  const tree = parser.programa();
+
+  if (errorListener.hasErrors()) {
+    console.error("\n❌ Se encontraron errores de sintaxis:");
+    errorListener.getErrors().forEach((err) => {
+      console.error(err);
+    });
+    return;
+  }
+
+  console.log("\n✅ Entrada válida.");
+  console.log("\n🌳 Árbol de derivación:");
+  console.log(tree.toStringTree(parser.ruleNames));
+
+  console.log("\n📝 Traducción a código JavaScript:");
+  const visitor = new CustomVisitor(true);
+  const jsCode = visitor.generateJS(tree);
+  console.log(jsCode);
+
+  console.log("\n▶️ Ejecutando como intérprete...");
+  try {
+    eval(jsCode);
+  } catch (err) {
+    console.error("❌ Error al ejecutar el código generado:", err.message);
+  }
 }
 
 function leerCadena() {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
-    return new Promise(resolve => {
-        rl.question("Ingrese una cadena: ", (answer) => {
-            rl.close();
-            resolve(answer);
-        });
+  return new Promise((resolve) => {
+    rl.question("Ingrese una cadena: ", (answer) => {
+      rl.close();
+      resolve(answer);
     });
+  });
 }
 
-// Ejecuta la función principal
-main();
+function detectarErroresOrtograficos(input) {
+  const palabrasClave = [
+    "programa", "procesar", "manejarError", "imprimir"
+  ];
+
+  const palabras = input.split(/\b/);
+  palabras.forEach((palabra) => {
+    if (
+      /^[a-zA-Z_]+$/.test(palabra) &&
+      !palabrasClave.includes(palabra) &&
+      palabra.length > 2
+    ) {
+      for (const clave of palabrasClave) {
+        const dist = levenshtein(palabra, clave);
+        if (dist <= 2) {
+          console.warn(
+            `⚠️  Advertencia: La palabra '${palabra}' podría ser un error de tipeo. ¿Quisiste escribir '${clave}'?`
+          );
+        }
+      }
+    }
+  });
+}
+
+function levenshtein(a, b) {
+  const matrix = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array(b.length + 1).fill(0)
+  );
+
+  for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return matrix[a.length][b.length];
+}
+
+main().catch(console.error);

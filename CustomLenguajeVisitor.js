@@ -1,8 +1,8 @@
-import { Parser } from "antlr4";
-import CalculatorVisitor from "./generated/CalculatorVisitor.js";
-import CalculatorParser from "./generated/CalculatorParser.js";
+import  {Parser } from "antlr4";
+import LenguajeVisitor from "./generated/LenguajeVisitor.js";
+import LenguajeParser from "./generated/LenguajeParser.js";
 
-export class CustomCalculatorVisitor extends CalculatorVisitor{
+export class CustomLenguajeVisitor extends LenguajeVisitor{
 
     constructor() {
         super();
@@ -34,7 +34,7 @@ export class CustomCalculatorVisitor extends CalculatorVisitor{
       visitAddSub(ctx) {
         const left =  this.visit(ctx.expr(0));  
         const right = this.visit(ctx.expr(1));  
-        if (ctx.op.type==CalculatorParser.ADD){
+        if (ctx.op.type==LenguajeParser.ADD){
           return left + right; }
         else
           return left - right;

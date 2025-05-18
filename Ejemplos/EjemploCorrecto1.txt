@@ -1,0 +1,9 @@
+programa Saludo {
+  nombre = "Martín";
+
+  procesar {
+    imprimir(nombre);
+  } manejarError (e) {
+    imprimir("Ocurrió un error");
+  };
+}
